@@ -25,11 +25,15 @@ line_height  = textmetrics(text_lines[0], size = text_size, font = text_font).si
 base_width = max(line_widths) + 2 * pad_x;
 base_depth = line_height + (len(text_lines) - 1) * text_size * text_line_spacing + 2 * pad_y;
 
-/* [Corner Circles] */
-// Radius of the concave spherical cutout at each corner (mm)
+/* [Corners] */
+// 0 = concave circle, 1 = chamfer (45°)
+corner_style = 0;
+// Radius of the concave circle cutout (mm) — corner_style 0 only
 corner_radius = 8;
-// Inset from corner vertex — 0 = centered on corner, increase to move circles inward
+// Inset from corner vertex (mm) — corner_style 0 only
 corner_inset = 0;
+// Length cut from each side of a corner (mm) — corner_style 1 only
+chamfer_size = 8;
 
 /* [Raised Border] */
 // Distance from base edge to outer wall of the border (mm)
@@ -57,7 +61,6 @@ magnet_thickness = 2;
 $fn = 64;
 
 // 2D rectangle with concave quarter-circles at each corner.
-// cr is clamped so circles never overlap when the rect is small.
 module concave_corner_rect(w, d, cr) {
     safe_cr = min(cr, w / 2, d / 2);
     difference() {
@@ -69,11 +72,22 @@ module concave_corner_rect(w, d, cr) {
     }
 }
 
+// 2D rectangle with 45° chamfers at each corner.
+module chamfered_rect(w, d, cs) {
+    safe_cs = min(cs, w / 2, d / 2);
+    polygon([
+        [safe_cs, 0],        [w - safe_cs, 0],
+        [w, safe_cs],        [w, d - safe_cs],
+        [w - safe_cs, d],    [safe_cs, d],
+        [0, d - safe_cs],    [0, safe_cs]
+    ]);
+}
+
 module plaque() {
-    // Clamp sphere radius so opposite-corner spheres never fully overlap
     eff_cr = min(corner_radius,
                  (base_width  - 2 * corner_inset) / 2,
                  (base_depth  - 2 * corner_inset) / 2);
+    eff_cs = min(chamfer_size, base_width / 2, base_depth / 2);
 
     mount_positions =
         (mount_style == 1 || mount_style == 3) ? [
@@ -84,13 +98,26 @@ module plaque() {
             [base_width / 2, base_depth - mount_edge_spacing]
         ] : [];
 
-    // Base with cylindrical concave cutouts at each corner and optional mounting
+    // Base
     difference() {
         cube([base_width, base_depth, base_height]);
-        for (x = [corner_inset, base_width  - corner_inset])
-            for (y = [corner_inset, base_depth - corner_inset])
-                translate([x, y, -0.01])
-                    cylinder(r = eff_cr, h = base_height + 0.02);
+
+        // Corner cuts
+        if (corner_style == 0) {
+            for (x = [corner_inset, base_width  - corner_inset])
+                for (y = [corner_inset, base_depth - corner_inset])
+                    translate([x, y, -0.01])
+                        cylinder(r = eff_cr, h = base_height + 0.02);
+        } else {
+            for (cx = [0, base_width])
+                for (cy = [0, base_depth])
+                    let(sx = (cx == 0) ? eff_cs : -eff_cs,
+                        sy = (cy == 0) ? eff_cs : -eff_cs)
+                    translate([cx, cy, -0.01])
+                        linear_extrude(base_height + 0.02)
+                            polygon([[0, 0], [sx, 0], [0, sy]]);
+        }
+
         // Screw holes — through the full base
         if (mount_style == 1 || mount_style == 2)
             for (pos = mount_positions)
@@ -103,17 +130,24 @@ module plaque() {
                     cylinder(r = magnet_radius, h = magnet_thickness);
     }
 
-    // Raised border — offset() shrinks the outer profile inward uniformly so
-    // wall thickness stays consistent at the corners, not just on straight edges.
+    // Raised border
     ow = base_width  - 2 * border_inset;
     od = base_depth  - 2 * border_inset;
 
     translate([border_inset, border_inset, base_height])
         linear_extrude(border_height)
-            difference() {
-                concave_corner_rect(ow, od, eff_cr);
-                offset(r = -border_thickness)
+            if (corner_style == 0) {
+                difference() {
                     concave_corner_rect(ow, od, eff_cr);
+                    offset(r = -border_thickness)
+                        concave_corner_rect(ow, od, eff_cr);
+                }
+            } else {
+                difference() {
+                    chamfered_rect(ow, od, eff_cs);
+                    offset(delta = -border_thickness)
+                        chamfered_rect(ow, od, eff_cs);
+                }
             }
 
     // Raised text, centered on the base — each line stacked top to bottom
