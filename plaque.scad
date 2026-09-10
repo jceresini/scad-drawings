@@ -53,13 +53,13 @@ module plaque() {
                  (base_width  - 2 * corner_inset) / 2,
                  (base_depth  - 2 * corner_inset) / 2);
 
-    // Base with spherical concave cutouts at each corner
+    // Base with cylindrical concave cutouts at each corner
     difference() {
         cube([base_width, base_depth, base_height]);
         for (x = [corner_inset, base_width  - corner_inset])
             for (y = [corner_inset, base_depth - corner_inset])
-                translate([x, y, base_height])
-                    sphere(r = eff_cr);
+                translate([x, y, -0.01])
+                    cylinder(r = eff_cr, h = base_height + 0.02);
     }
 
     // Raised border — follows the concave-corner shape of the base
