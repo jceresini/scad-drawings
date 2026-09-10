@@ -1,12 +1,14 @@
 /* [Text] */
-// Text to display on the plaque
-text_content = "Hello World";
+// Lines of text to display (one string per line)
+text_lines = ["Hello World"];
 // Font size (mm)
 text_size = 12;
 // Font name — must be installed on your system
 text_font = "Liberation Sans:style=Bold";
 // How much the text is raised above the base surface (mm)
 text_depth = 4;
+// Spacing between lines as a multiplier of text_size
+text_line_spacing = 1.2;
 
 /* [Padding] */
 // Extra space on left and right between text and base edge (mm)
@@ -18,9 +20,10 @@ pad_y = 15;
 // Thickness of the base (mm)
 base_height = 5;
 
-m = textmetrics(text_content, size = text_size, font = text_font);
-base_width = m.size.x + 2 * pad_x;
-base_depth = m.size.y + 2 * pad_y;
+line_widths = [for (l = text_lines) textmetrics(l, size = text_size, font = text_font).size.x];
+line_height  = textmetrics(text_lines[0], size = text_size, font = text_font).size.y;
+base_width = max(line_widths) + 2 * pad_x;
+base_depth = line_height + (len(text_lines) - 1) * text_size * text_line_spacing + 2 * pad_y;
 
 /* [Corner Circles] */
 // Radius of the concave spherical cutout at each corner (mm)
@@ -81,11 +84,15 @@ module plaque() {
                     concave_corner_rect(ow, od, eff_cr);
             }
 
-    // Raised text, centered on the base
-    translate([base_width / 2, base_depth / 2, base_height])
-        linear_extrude(text_depth)
-            text(text_content, size = text_size, font = text_font,
-                 halign = "center", valign = "center");
+    // Raised text, centered on the base — each line stacked top to bottom
+    total_text_height = (len(text_lines) - 1) * text_size * text_line_spacing;
+    for (i = [0 : len(text_lines) - 1])
+        translate([base_width / 2,
+                   base_depth / 2 + total_text_height / 2 - i * text_size * text_line_spacing,
+                   base_height])
+            linear_extrude(text_depth)
+                text(text_lines[i], size = text_size, font = text_font,
+                     halign = "center", valign = "center");
 }
 
 plaque();
