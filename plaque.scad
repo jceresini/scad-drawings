@@ -39,6 +39,14 @@ border_height = 2;
 // Thickness of the border walls (mm)
 border_thickness = 3;
 
+/* [Mounting Holes] */
+// 0 = none, 1 = left + right sides (centered vertically), 2 = top + bottom (centered horizontally)
+mount_style = 0;
+// Screw hole diameter (mm)
+hole_diameter = 4;
+// Distance from edge to hole center (mm)
+hole_edge_spacing = 10;
+
 /* [Quality] */
 // Circle/sphere resolution (segments)
 $fn = 64;
@@ -62,13 +70,25 @@ module plaque() {
                  (base_width  - 2 * corner_inset) / 2,
                  (base_depth  - 2 * corner_inset) / 2);
 
-    // Base with cylindrical concave cutouts at each corner
+    hole_positions =
+        mount_style == 1 ? [
+            [hole_edge_spacing,              base_depth / 2],
+            [base_width - hole_edge_spacing, base_depth / 2]
+        ] : mount_style == 2 ? [
+            [base_width / 2, hole_edge_spacing],
+            [base_width / 2, base_depth - hole_edge_spacing]
+        ] : [];
+
+    // Base with cylindrical concave cutouts at each corner and optional mount holes
     difference() {
         cube([base_width, base_depth, base_height]);
         for (x = [corner_inset, base_width  - corner_inset])
             for (y = [corner_inset, base_depth - corner_inset])
                 translate([x, y, -0.01])
                     cylinder(r = eff_cr, h = base_height + 0.02);
+        for (pos = hole_positions)
+            translate([pos[0], pos[1], -0.01])
+                cylinder(d = hole_diameter, h = base_height + 0.02);
     }
 
     // Raised border — offset() shrinks the outer profile inward uniformly so
