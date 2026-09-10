@@ -39,13 +39,18 @@ border_height = 2;
 // Thickness of the border walls (mm)
 border_thickness = 3;
 
-/* [Mounting Holes] */
-// 0 = none, 1 = left + right sides (centered vertically), 2 = top + bottom (centered horizontally)
+/* [Mounting] */
+// 0 = none, 1 = screw holes left+right, 2 = screw holes top+bottom,
+//           3 = magnet pockets left+right, 4 = magnet pockets top+bottom
 mount_style = 0;
+// Distance from edge to hole/pocket center (mm)
+mount_edge_spacing = 10;
 // Screw hole diameter (mm)
 hole_diameter = 4;
-// Distance from edge to hole center (mm)
-hole_edge_spacing = 10;
+// Magnet radius (mm)
+magnet_radius = 5;
+// Magnet thickness / pocket depth (mm) — must be less than base_height
+magnet_thickness = 2;
 
 /* [Quality] */
 // Circle/sphere resolution (segments)
@@ -70,25 +75,32 @@ module plaque() {
                  (base_width  - 2 * corner_inset) / 2,
                  (base_depth  - 2 * corner_inset) / 2);
 
-    hole_positions =
-        mount_style == 1 ? [
-            [hole_edge_spacing,              base_depth / 2],
-            [base_width - hole_edge_spacing, base_depth / 2]
-        ] : mount_style == 2 ? [
-            [base_width / 2, hole_edge_spacing],
-            [base_width / 2, base_depth - hole_edge_spacing]
+    mount_positions =
+        (mount_style == 1 || mount_style == 3) ? [
+            [mount_edge_spacing,              base_depth / 2],
+            [base_width - mount_edge_spacing, base_depth / 2]
+        ] : (mount_style == 2 || mount_style == 4) ? [
+            [base_width / 2, mount_edge_spacing],
+            [base_width / 2, base_depth - mount_edge_spacing]
         ] : [];
 
-    // Base with cylindrical concave cutouts at each corner and optional mount holes
+    // Base with cylindrical concave cutouts at each corner and optional mounting
     difference() {
         cube([base_width, base_depth, base_height]);
         for (x = [corner_inset, base_width  - corner_inset])
             for (y = [corner_inset, base_depth - corner_inset])
                 translate([x, y, -0.01])
                     cylinder(r = eff_cr, h = base_height + 0.02);
-        for (pos = hole_positions)
-            translate([pos[0], pos[1], -0.01])
-                cylinder(d = hole_diameter, h = base_height + 0.02);
+        // Screw holes — through the full base
+        if (mount_style == 1 || mount_style == 2)
+            for (pos = mount_positions)
+                translate([pos[0], pos[1], -0.01])
+                    cylinder(d = hole_diameter, h = base_height + 0.02);
+        // Magnet pockets — blind holes from the back
+        if (mount_style == 3 || mount_style == 4)
+            for (pos = mount_positions)
+                translate([pos[0], pos[1], 0])
+                    cylinder(r = magnet_radius, h = magnet_thickness);
     }
 
     // Raised border — offset() shrinks the outer profile inward uniformly so
