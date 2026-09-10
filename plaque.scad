@@ -68,21 +68,17 @@ module plaque() {
                     cylinder(r = eff_cr, h = base_height + 0.02);
     }
 
-    // Raised border — follows the concave-corner shape of the base
+    // Raised border — offset() shrinks the outer profile inward uniformly so
+    // wall thickness stays consistent at the corners, not just on straight edges.
     ow = base_width  - 2 * border_inset;
     od = base_depth  - 2 * border_inset;
-    inner_cr = max(0, eff_cr - border_thickness);
 
     translate([border_inset, border_inset, base_height])
         linear_extrude(border_height)
             difference() {
                 concave_corner_rect(ow, od, eff_cr);
-                translate([border_thickness, border_thickness])
-                    concave_corner_rect(
-                        ow - 2 * border_thickness,
-                        od - 2 * border_thickness,
-                        inner_cr
-                    );
+                offset(r = -border_thickness)
+                    concave_corner_rect(ow, od, eff_cr);
             }
 
     // Raised text, centered on the base
