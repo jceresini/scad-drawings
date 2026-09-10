@@ -8,13 +8,19 @@ text_font = "Liberation Sans:style=Bold";
 // How much the text is raised above the base surface (mm)
 text_depth = 4;
 
+/* [Padding] */
+// Extra space on left and right between text and base edge (mm)
+pad_x = 15;
+// Extra space on top and bottom between text and base edge (mm)
+pad_y = 15;
+
 /* [Base Size] */
-// Width of the plaque (mm)
-base_width = 130;
-// Depth of the plaque (mm)
-base_depth = 50;
 // Thickness of the base (mm)
 base_height = 5;
+
+m = textmetrics(text_content, size = text_size, font = text_font);
+base_width = m.size.x + 2 * pad_x;
+base_depth = m.size.y + 2 * pad_y;
 
 /* [Corner Circles] */
 // Radius of the concave spherical cutout at each corner (mm)
